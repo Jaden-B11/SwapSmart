@@ -26,7 +26,7 @@ export default function ScanScreen() {
       return;
     }
 
-    router.push((`/results/${encodeURIComponent(code)}`) as any);
+    router.replace((`/results/${encodeURIComponent(code)}`) as any);
   };
 
   if (!permission) {

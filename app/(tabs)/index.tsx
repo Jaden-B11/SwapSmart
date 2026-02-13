@@ -47,15 +47,11 @@ export default function HomeScreen() {
           <Text style={styles.tagline}>
             Scan a product and get 2–3 zero-sugar swaps in seconds.
           </Text>
-
+          
           {/* Optional scan quota pill (mocked) */}
-          <View style={styles.pillRow}>
-            <View style={styles.pill}>
-              <Text style={styles.pillText}>Free scans left: 3</Text>
-            </View>
-          </View>
+    
         </View>
-
+        
         {/* Primary action card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Start a swap</Text>
