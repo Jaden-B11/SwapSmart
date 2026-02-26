@@ -9,8 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 type QuickTile = {
@@ -110,13 +109,7 @@ export default function HomeScreen() {
             No scans yet. Try scanning your first item!
           </Text>
         </View>
-
-        <View style={styles.footerCard}>
-        <TouchableOpacity
-        onPress={() => router.push("/auth/login")}>
-         <Text>Login</Text> 
-         </TouchableOpacity>
-        </View>
+        
       </ScrollView>
     </SafeAreaView>
   );
