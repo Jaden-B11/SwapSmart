@@ -1,16 +1,17 @@
 import React, { useMemo, useState } from "react";
 
+import { useRouter } from "expo-router";
 import {
+  Platform,
+  Pressable,
   SafeAreaView,
-  View,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Platform,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useRouter, type Href } from "expo-router";
 
 type QuickTile = {
   title: string;
@@ -108,6 +109,13 @@ export default function HomeScreen() {
           <Text style={styles.footerSub}>
             No scans yet. Try scanning your first item!
           </Text>
+        </View>
+
+        <View style={styles.footerCard}>
+        <TouchableOpacity
+        onPress={() => router.push("/auth/login")}>
+         <Text>Login</Text> 
+         </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
