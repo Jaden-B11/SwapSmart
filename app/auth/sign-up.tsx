@@ -19,7 +19,15 @@ export default function SignUp() {
     const [email, setEmail] = useState("");
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
-    const [isChecked, setChecked] = useState(false);
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [glutenChecked, setGlutenChecked] = useState(false);
+    const [eggsChecked, setEggsChecked] = useState(false);
+    const [nutsChecked, setNutsChecked] = useState(false);
+    const [soybeansChecked, setSoybeansChecked] = useState(false);
+    const [milkChecked, setMilkChecked] = useState(false);
+    const [fishChecked, setFishChecked] = useState(false);
+    const [peanutsChecked, setPeanutsChecked] = useState(false);
+    const [sesameChecked, setSesameChecked] = useState(false);
 
   
 
@@ -28,8 +36,10 @@ export default function SignUp() {
 
     // if user doesn't fill out all fields 
         if (firstName.length === 0 || lastName.length === 0 || email.length === 0 || 
-        username.length === 0 || password.length === 0) {
+        username.length === 0 || password.length === 0 || confirmPassword.length === 0) {
             setErrorMsg("Please enter all fields");
+        } else if (password !== confirmPassword) {
+            setErrorMsg("Passwords don't match");
         } else {
             console.log("Working on sign up process in backend!");
         }
@@ -130,53 +140,52 @@ export default function SignUp() {
                                 secureTextEntry={true}
                                 autoCapitalize="none"
                                 autoComplete="password-new"
-                                onChangeText={setPassword}
+                                onChangeText={setConfirmPassword}
                             />
                         </View>
 
                     {/* Allergens Input */}
                     {/* TODO: Have an unique checkbox value for each allergen */}
-                    {/* TODO: align items better */}
+                    <Text style={styles.label}> Allergens: </Text>
                     <View style={styles.allergenContainer}>
-                        <Text style={styles.label}> Allergens: </Text>
 
                         <View style={styles.allergenItems}>
-                        <Checkbox style={styles.checkbox} value={isChecked} onValueChange={setChecked}/>
+                        <Checkbox style={styles.checkbox} value={glutenChecked} onValueChange={setGlutenChecked}/>
                         <Text>Gluten</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={isChecked} onValueChange={setChecked}/>
+                            <Checkbox style={styles.checkbox} value={milkChecked} onValueChange={setMilkChecked}/>
                             <Text>Milk</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={isChecked} onValueChange={setChecked}/>
+                            <Checkbox style={styles.checkbox} value={eggsChecked} onValueChange={setEggsChecked}/>
                             <Text>Eggs</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={isChecked} onValueChange={setChecked}/>
+                            <Checkbox style={styles.checkbox} value={fishChecked} onValueChange={setFishChecked}/>
                             <Text>Fish</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={isChecked} onValueChange={setChecked}/>
+                            <Checkbox style={styles.checkbox} value={nutsChecked} onValueChange={setNutsChecked}/>
                             <Text>Nuts</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={isChecked} onValueChange={setChecked}/>
+                            <Checkbox style={styles.checkbox} value={peanutsChecked} onValueChange={setPeanutsChecked}/>
                             <Text>Peanuts</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={isChecked} onValueChange={setChecked}/>
+                            <Checkbox style={styles.checkbox} value={soybeansChecked} onValueChange={setSoybeansChecked}/>
                             <Text>Soybeans</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={isChecked} onValueChange={setChecked}/>
+                            <Checkbox style={styles.checkbox} value={sesameChecked} onValueChange={setSesameChecked}/>
                             <Text>Sesame Seeds</Text>
                         </View>
 
