@@ -1,16 +1,16 @@
 import React, { useMemo, useState } from "react";
 
+import { useRouter } from "expo-router";
 import {
+  Platform,
+  Pressable,
   SafeAreaView,
-  View,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Platform,
+  View
 } from "react-native";
-import { useRouter, type Href } from "expo-router";
 
 type QuickTile = {
   title: string;
@@ -109,6 +109,7 @@ export default function HomeScreen() {
             No scans yet. Try scanning your first item!
           </Text>
         </View>
+        
       </ScrollView>
     </SafeAreaView>
   );
