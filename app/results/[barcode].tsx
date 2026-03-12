@@ -1,14 +1,14 @@
 // app/results/[barcode].tsx
 
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
   ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   getProductByBarcode,
   type OFFProduct,
