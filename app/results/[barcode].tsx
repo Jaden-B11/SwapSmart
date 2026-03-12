@@ -51,6 +51,12 @@ export default function ResultsScreen() {
   const product = data?.product;
   const found = data?.status === 1;
 
+  function fmtNumber(v: any, decimals = 2) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return "—";
+    return n.toFixed(decimals);
+  }
+
   return (
     <View style={styles.safe}>
       <Stack.Screen
@@ -135,7 +141,9 @@ export default function ResultsScreen() {
             <Text style={styles.body}>
               Sugars (per 100g):{" "}
               <Text style={styles.bold}>
-                {product?.nutriments?.sugars_100g ?? "—"} g
+                {product?.nutriments?.sugars_100g != null
+                  ? `${fmtNumber(product.nutriments.sugars_100g)} g`
+                  : "—"}
               </Text>
             </Text>
 
