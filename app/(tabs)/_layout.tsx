@@ -1,5 +1,5 @@
 import { Tabs, useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -9,17 +9,16 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const { session } = useAuth();
+  const { session, loading } = useAuth();
   const router = useRouter();
 
-  // Redirect to login when user tries to access protected tab
-  const handleProtectedTab = () => {
+  // Redirect to home page when logged out
+  useEffect(() => {
+    if (loading) return;
     if (!session) {
-      router.push('/auth/login');
-      return false;
+      router.replace('/(tabs)');
     }
-    return true;
-  };
+  }, [session, loading]);
 
   return (
     <Tabs
@@ -48,54 +47,34 @@ export default function TabLayout() {
         name="options"
         options={{
           title: 'Options',
+          href: session ? null : undefined,
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gear" color={color} />,
         }}
       />
 
-      {/* Protected tabs — redirect to login if not authenticated */}
+      {/* Protected tabs — hidden when logged out */}
       <Tabs.Screen
         name="saved"
         options={{
           title: 'Saved',
+          href: session ? undefined : null,
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="bookmark.fill" color={color} />,
-          tabBarButton: (props) => (
-            <HapticTab
-              {...props}
-              onPress={() => {
-                if (handleProtectedTab()) props.onPress?.(null as any);
-              }}
-            />
-          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
+          href: session ? undefined : null,
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
-          tabBarButton: (props) => (
-            <HapticTab
-              {...props}
-              onPress={() => {
-                if (handleProtectedTab()) props.onPress?.(null as any);
-              }}
-            />
-          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
+          href: session ? undefined : null,
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gear" color={color} />,
-          tabBarButton: (props) => (
-            <HapticTab
-              {...props}
-              onPress={() => {
-                if (handleProtectedTab()) props.onPress?.(null as any);
-              }}
-            />
-          ),
         }}
       />
 
