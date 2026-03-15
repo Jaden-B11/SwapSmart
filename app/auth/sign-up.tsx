@@ -13,7 +13,6 @@ import {
 } from "react-native";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
-console.log(BACKEND_URL);
 
 export default function SignUp() {
     const router = useRouter();
@@ -56,7 +55,6 @@ export default function SignUp() {
 
             // Get the session token to call our backend
             const { data: { session } } = await supabase.auth.getSession();
-            console.log("Session:", session); // debug print
 
             if (!session) {
                 setErrorMsg("Sign up succeeded but could not get session. Please log in.");
@@ -66,11 +64,6 @@ export default function SignUp() {
 
             const token = session.access_token;
 
-            console.log("Token exists:", !!session.access_token);
-            console.log("BACKEND_URL:", BACKEND_URL);
-            console.log("Full URL:", `${BACKEND_URL}/api/users/profile`);
-            console.log("About to fetch...");
-            
             try {
                 const profileResponse = await fetch(`${BACKEND_URL}/api/users/profile`, {
                     method: "POST",
@@ -84,9 +77,7 @@ export default function SignUp() {
                         username
                     })
                 });
-                console.log("Profile response status:", profileResponse.status);
-                const profileBody = await profileResponse.text();
-                console.log("Profile response body:", profileBody);
+               
             } catch (fetchError: any) {
                 console.log("Fetch error:", fetchError.message);
             }
