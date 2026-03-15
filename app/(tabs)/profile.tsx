@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import React from "react";
 
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "expo-router";
 import {
   Alert,
@@ -12,8 +13,31 @@ import {
   View
 } from "react-native";
 
-export default function HomeScreen() {
+export default function ProfileScreen() {
   const router = useRouter();
+  const { signOut, user } = useAuth();
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+              // AuthGate in _layout.tsx will automatically redirect to tabs
+            } catch (error: any) {
+              Alert.alert("Error", error.message || "Sign out failed.");
+            }
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -22,6 +46,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <Text style={styles.brand}>Profile</Text>
         </View>
+
         <View style={styles.card}>
           <View style={styles.row}>
             {/* Profile picture */}
@@ -31,22 +56,30 @@ export default function HomeScreen() {
             />
             <View>
               <Text style={styles.label}>User Name</Text>
-              <Text style={styles.cardTitle}>FirstName LastName </Text>
+              <Text style={styles.cardTitle}>FirstName LastName</Text>
             </View>
             <Pressable onPress={() => Alert.alert("Editing")}>
-              <Text style={styles.cardTitle}>Edit </Text> 
+              <Text style={styles.cardTitle}>Edit</Text> 
             </Pressable>
           </View>
         </View>
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Account Info</Text>
+          <Text style={styles.label}>{user?.email}</Text>
         </View>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Sign Out </Text>
-        </View>
+
+        {/* Sign Out */}
+        <Pressable onPress={handleSignOut}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Sign Out</Text>
+          </View>
+        </Pressable>
+
+        {/* Delete Account */}
         <Pressable onPress={() => Alert.alert("Are you sure?")}>
           <View style={styles.card}>
-            <Text style={[styles.cardTitle, {color:'red'}]}>Delete Account </Text>
+            <Text style={[styles.cardTitle, {color:'red'}]}>Delete Account</Text>
           </View>
         </Pressable>
 
@@ -58,7 +91,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0b1220" },
   container: { padding: 18, gap: 14 },
-
   header: { gap: 6, marginTop: 6 },
   brand: { fontSize: 34, fontWeight: "800", color: "white" },
   tagline: { fontSize: 14, color: "rgba(255,255,255,0.75)", lineHeight: 20 },
@@ -72,7 +104,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
   },
   pillText: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "600" },
-
   card: {
     backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 18,
@@ -82,7 +113,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.10)",
   },
   cardTitle: { color: "white", fontSize: 16, fontWeight: "700" },
-
   primaryBtn: {
     backgroundColor: "rgba(255,255,255,0.92)",
     borderRadius: 14,
@@ -91,9 +121,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { fontSize: 16, fontWeight: "800", color: "#0b1220" },
   primaryBtnSub: { marginTop: 4, fontSize: 12, color: "rgba(11,18,32,0.65)" },
-
   divider: { height: 1, backgroundColor: "rgba(255,255,255,0.10)" },
-
   label: { fontSize: 12, color: "rgba(255,255,255,0.75)" },
   row: { flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "space-between" },
   input: {
@@ -116,7 +144,6 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: { color: "white", fontWeight: "700" },
   helper: { fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 18 },
-
   grid: { flexDirection: "row", gap: 12 },
   tile: {
     flex: 1,
@@ -129,7 +156,6 @@ const styles = StyleSheet.create({
   },
   tileTitle: { color: "white", fontWeight: "800" },
   tileSub: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
-
   footerCard: {
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 18,
