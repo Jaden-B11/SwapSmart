@@ -1,3 +1,5 @@
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { Checkbox } from 'expo-checkbox';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -10,9 +12,11 @@ import {
     View
 } from "react-native";
 
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function SignUp() {
     const router = useRouter();
+    const { signUp } = useAuth();
     const [errorMsg, setErrorMsg] = useState("");
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
@@ -29,19 +33,93 @@ export default function SignUp() {
     const [peanutsChecked, setPeanutsChecked] = useState(false);
     const [sesameChecked, setSesameChecked] = useState(false);
 
-  
-
-    const handleSignUp = () => {
+    const handleSignUp = async () => {
         setErrorMsg("");
 
-    // if user doesn't fill out all fields 
-        if (firstName.length === 0 || lastName.length === 0 || email.length === 0 || 
-        username.length === 0 || password.length === 0 || confirmPassword.length === 0) {
+        // Validate all fields filled out
+        if (firstName.length === 0 || lastName.length === 0 || email.length === 0 ||
+            username.length === 0 || password.length === 0 || confirmPassword.length === 0) {
             setErrorMsg("Please enter all fields");
-        } else if (password !== confirmPassword) {
+            return;
+        }
+
+        // Validate passwords match
+        if (password !== confirmPassword) {
             setErrorMsg("Passwords don't match");
-        } else {
-            console.log("Working on sign up process in backend!");
+            return;
+        }
+
+        try {
+            // Sign up with Supabase Auth
+            await signUp(email, password);
+
+            // Get the session token to call our backend
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                setErrorMsg("Sign up succeeded but could not get session. Please log in.");
+                router.push("/auth/login");
+                return;
+            }
+
+            const token = session.access_token;
+
+            try {
+                const profileResponse = await fetch(`${BACKEND_URL}/api/users/profile`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${session.access_token}`
+                    },
+                    body: JSON.stringify({
+                        firstName,
+                        lastName,
+                        username
+                    })
+                });
+               
+            } catch (fetchError: any) {
+                console.log("Fetch error:", fetchError.message);
+            }
+
+            // if account created with Supabase Auth, but profile creation in backend went wrong
+            // if (!profileResponse.ok) {
+            //     setErrorMsg("Account created but profile setup failed. Please contact support.");
+            //     return;
+            // }
+
+            // Save selected allergens to backend
+            const selectedAllergens = [
+                glutenChecked && "en:gluten",
+                milkChecked && "en:milk",
+                eggsChecked && "en:eggs",
+                fishChecked && "en:fish",
+                nutsChecked && "en:nuts",
+                peanutsChecked && "en:peanuts",
+                soybeansChecked && "en:soybeans",
+                sesameChecked && "en:sesame-seeds"
+            ].filter(Boolean);
+
+            try {
+                if (selectedAllergens.length > 0) {
+                    await fetch(`${BACKEND_URL}/api/users/allergens`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}`
+                        },
+                        body: JSON.stringify(selectedAllergens)
+                    });
+                }
+    
+            } catch(error) {
+                console.log("Error with creating user allergens: " + error);
+            }
+            
+            // AuthGate will redirect to tabs automatically
+
+        } catch (error: any) {
+            setErrorMsg(error.message || "Sign up failed. Please try again.");
         }
     }
 
@@ -93,6 +171,7 @@ export default function SignUp() {
                                 placeholderTextColor="gray"
                                 autoCapitalize="none"
                                 autoComplete="email"
+                                keyboardType="email-address"
                                 onChangeText={setEmail}
                             />
                         </View>
@@ -143,69 +222,66 @@ export default function SignUp() {
                                 onChangeText={setConfirmPassword}
                             />
                         </View>
+                    </View>
 
                     {/* Allergens Input */}
-                    {/* TODO: Have an unique checkbox value for each allergen */}
-                    <Text style={styles.label}> Allergens: </Text>
+                    <Text style={styles.label}>Allergens:</Text>
                     <View style={styles.allergenContainer}>
 
                         <View style={styles.allergenItems}>
-                        <Checkbox style={styles.checkbox} value={glutenChecked} onValueChange={setGlutenChecked}/>
-                        <Text>Gluten</Text>
+                            <Checkbox style={styles.checkbox} value={glutenChecked} onValueChange={setGlutenChecked} />
+                            <Text>Gluten</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={milkChecked} onValueChange={setMilkChecked}/>
+                            <Checkbox style={styles.checkbox} value={milkChecked} onValueChange={setMilkChecked} />
                             <Text>Milk</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={eggsChecked} onValueChange={setEggsChecked}/>
+                            <Checkbox style={styles.checkbox} value={eggsChecked} onValueChange={setEggsChecked} />
                             <Text>Eggs</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={fishChecked} onValueChange={setFishChecked}/>
+                            <Checkbox style={styles.checkbox} value={fishChecked} onValueChange={setFishChecked} />
                             <Text>Fish</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={nutsChecked} onValueChange={setNutsChecked}/>
+                            <Checkbox style={styles.checkbox} value={nutsChecked} onValueChange={setNutsChecked} />
                             <Text>Nuts</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={peanutsChecked} onValueChange={setPeanutsChecked}/>
+                            <Checkbox style={styles.checkbox} value={peanutsChecked} onValueChange={setPeanutsChecked} />
                             <Text>Peanuts</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={soybeansChecked} onValueChange={setSoybeansChecked}/>
+                            <Checkbox style={styles.checkbox} value={soybeansChecked} onValueChange={setSoybeansChecked} />
                             <Text>Soybeans</Text>
                         </View>
 
                         <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={sesameChecked} onValueChange={setSesameChecked}/>
+                            <Checkbox style={styles.checkbox} value={sesameChecked} onValueChange={setSesameChecked} />
                             <Text>Sesame Seeds</Text>
                         </View>
 
                     </View>
 
-                </View>
-
                     {/* Buttons */}
-
                     <View style={styles.buttonGroup}>
 
-                    {/* Sign Up */}
-                    <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
-                        <Text style={styles.signUpText}>Sign up</Text>
-                    </TouchableOpacity>
+                        {/* Sign Up */}
+                        <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
+                            <Text style={styles.signUpText}>Sign up</Text>
+                        </TouchableOpacity>
 
-                    {/* Cancel Sign Up process -> reroute to options page */}
-                    <TouchableOpacity style={styles.cancelButton} onPress={() => router.push("/(tabs)/options")}>
-                        <Text style={styles.cancelText}>Cancel</Text>
-                    </TouchableOpacity>
+                        {/* Cancel Sign Up process -> reroute to options page */}
+                        <TouchableOpacity style={styles.cancelButton} onPress={() => router.push("/(tabs)/options")}>
+                            <Text style={styles.cancelText}>Cancel</Text>
+                        </TouchableOpacity>
 
                     </View>
 
@@ -324,7 +400,6 @@ const styles = StyleSheet.create({
         fontWeight: "600"
     },
     checkbox: {
-        // color: "blue"
         margin: 5
     },
     allergenContainer: {
@@ -338,3 +413,8 @@ const styles = StyleSheet.create({
         marginBottom: 8
     }
 });
+// ```
+
+// Also add `EXPO_PUBLIC_BACKEND_URL` to your `.env`:
+// ```
+// EXPO_PUBLIC_BACKEND_URL=http://localhost:8080

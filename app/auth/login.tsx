@@ -1,3 +1,4 @@
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -12,23 +13,26 @@ import {
 
 export default function Login() {
     const router = useRouter();
+    const { signIn } = useAuth();
     const [errorMsg, setErrorMsg] = useState("");
-    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
-
-    const handleLogin = () => {
+    const handleLogin = async () => {
         setErrorMsg("");
 
-        if (password.length === 0 || username.length === 0) {
-            setErrorMsg("Please enter a valid username and password.");
-        } else {
-            console.log("Working on login in backend!");
+        if (password.length === 0 || email.length === 0) {
+            setErrorMsg("Please enter a valid email and password.");
+            return;
         }
 
+        try {
+            await signIn(email, password);
+            // AuthGate in _layout.tsx will automatically redirect to tabs
+        } catch (error: any) {
+            setErrorMsg(error.message || "Login failed. Please try again.");
+        }
     }
-
-
 
     return (
         <View style={styles.container}>
@@ -37,21 +41,22 @@ export default function Login() {
                 {/* Title */}
                 <Text style={styles.title}>Login</Text>
 
-                {/* Username/Password Inputs */}
+                {/* Email/Password Inputs */}
                 <View style={styles.formContainer}>
 
-                    {/* Username Input */}
+                    {/* Email Input */}
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Username</Text>
+                        <Text style={styles.label}>Email</Text>
                         <View style={styles.inputWrapper}>
                             <TextInput
                                 style={styles.input}
-                                value={username}
-                                onChangeText={setUsername}
-                                placeholder="Enter your username"
+                                value={email}
+                                onChangeText={setEmail}
+                                placeholder="Enter your email"
                                 placeholderTextColor="gray"
                                 autoCapitalize="none"
-                                autoComplete="username"
+                                autoComplete="email"
+                                keyboardType="email-address"
                             />
                         </View>
                     </View>
@@ -83,7 +88,7 @@ export default function Login() {
                         <Text style={styles.signInText}>Sign in</Text>
                     </TouchableOpacity>
 
-                    {/* Cancel Login process -> reroute to Login or Signup page */}
+                    {/* Cancel Login process -> reroute to options page */}
                     <TouchableOpacity style={styles.cancelButton} onPress={() => router.push("/(tabs)/options")}>
                         <Text style={styles.cancelText}>Cancel</Text>
                     </TouchableOpacity>
