@@ -22,7 +22,7 @@ type AltProduct = {
 };
 
 const API_BASE_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL ?? "http://192.168.12.119:8080";
+  process.env.EXPO_PUBLIC_BACKEND_URL ?? "http://10.0.2.2:8080";
 
 // ---------- Backend ----------
 async function getAlternatives(barcode: string): Promise<AltProduct[]> {
