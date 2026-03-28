@@ -1,14 +1,15 @@
 // app/results/[barcode].tsx
 
+import { supabase } from "@/lib/supabase";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
-  ScrollView,
 } from "react-native";
 
 type AltProduct = {
@@ -26,7 +27,15 @@ const API_BASE_URL =
 
 // ---------- Backend ----------
 async function getAlternatives(barcode: string): Promise<AltProduct[]> {
-  const res = await fetch(`${API_BASE_URL}/api/alts/${encodeURIComponent(barcode)}`);
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE_URL}/api/alts/${encodeURIComponent(barcode)}`, { headers });
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`Backend error ${res.status}: ${txt}`);

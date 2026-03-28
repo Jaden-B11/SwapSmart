@@ -1,11 +1,23 @@
 // src/services/backendApi.ts
 
+import { supabase } from "@/lib/supabase";
+
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_BACKEND_URL ?? "http://10.0.2.2:8080"; // change if needed
 
 async function request<T>(path: string): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
-  const res = await fetch(url);
+
+  // Get current session token if logged in
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, { headers });
 
   if (!res.ok) {
     const text = await res.text();
