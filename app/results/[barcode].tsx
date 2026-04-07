@@ -223,42 +223,59 @@ export default function ResultsScreen() {
                   const pct = percentLess(scannedSugar, p.sugars100g);
 
                   return (
-                    <Pressable
+                    <View 
                       key={p.barcode}
-                      style={styles.altCard}
-                      onPress={() =>
-                        router.push(
-                          (`/product/${encodeURIComponent(p.barcode)}` as any)
-                        )
-                      }
-                    >
-                      <Text style={styles.altTitle}>
-                        {p.productName ?? "Unnamed product"}
-                      </Text>
-
-                      <Text style={styles.altSub}>
-                        Sugars (100g):{" "}
-                        <Text style={styles.bold}>
-                          {p.sugars100g != null ? `${fmtNumber(p.sugars100g)} g` : "—"}
+                      style={[styles.altCard, {flexDirection: 'row', overflow: "hidden"}]}
+                      >                      
+                      <Pressable
+                        key={p.barcode}   
+                        style={{ flex: 3 }}                     
+                        onPress={() =>
+                          router.push(
+                            (`/product/${encodeURIComponent(p.barcode)}` as any)
+                          )
+                        }
+                      >
+                        <Text style={styles.altTitle}>
+                          {p.productName ?? "Unnamed product"}
                         </Text>
-                      </Text>
 
-                      <View style={[styles.sugarPill, { backgroundColor: badge.bg }]}>
-                        <Text style={[styles.sugarPillText, { color: badge.text }]}>
-                          {badge.label}
-                        </Text>
-                      </View>
-
-                      {pct != null ? (
                         <Text style={styles.altSub}>
-                          ~{pct}% less sugar per 100g vs scanned item
+                          Sugars (100g):{" "}
+                          <Text style={styles.bold}>
+                            {p.sugars100g != null ? `${fmtNumber(p.sugars100g)} g` : "—"}
+                          </Text>
                         </Text>
-                      ) : null}
 
-                      {p.category ? (
-                        <Text style={styles.altSub}>Category: {p.category}</Text>
-                      ) : null}
-                    </Pressable>
+                        <View style={[styles.sugarPill, { backgroundColor: badge.bg }]}>
+                          <Text style={[styles.sugarPillText, { color: badge.text }]}>
+                            {badge.label}
+                          </Text>
+                        </View>
+
+                        {pct != null ? (
+                          <Text style={styles.altSub}>
+                            ~{pct}% less sugar per 100g vs scanned item
+                          </Text>
+                        ) : null}
+
+                        {p.category ? (
+                          <Text style={styles.altSub}>Category: {p.category}</Text>
+                        ) : null}
+                      </Pressable>
+                      
+                      <Pressable
+                        style={[styles.btn]}
+                        onPress={() => {
+                          alert('Saved')
+                        }}
+                      >
+                        <Text style={[styles.sugarPillText, { color: 'black', }]}>
+                          Save Swap
+                        </Text>
+                      </Pressable>
+                      
+                    </View>
                   );
                 })}
               </ScrollView>
