@@ -1,23 +1,28 @@
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
+  StyleSheet,
+  Text,
   TextInput,
+  View,
 } from "react-native";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { getProductByBarcode, type OFFProduct } from "../../src/services/openFoodFacts";
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? "http://10.0.2.2:8080";
 
 type Review = {
   id: string;
-  userName: string;
-  rating: number; // 1-5
+  userId: string;
+  barcode: string;
+  rating: number;
   comment: string;
-  createdAt: string;
+  timeCreated: string;
 };
 
 function Stars({
@@ -51,6 +56,7 @@ function Stars({
 
 export default function ProductDetailScreen() {
   const router = useRouter();
+  const { session } = useAuth();
   const { barcode } = useLocalSearchParams<{ barcode: string }>();
   const bc = useMemo(() => String(barcode ?? "").trim(), [barcode]);
 
@@ -58,37 +64,64 @@ export default function ProductDetailScreen() {
   const [data, setData] = useState<OFFProduct | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  // -------- Reviews (mock now, wire to backend later) --------
-  const [isLoggedIn] = useState(true); // TODO: replace with your auth/session state
+  const isLoggedIn = !!session;
   const [myRating, setMyRating] = useState(0);
   const [myComment, setMyComment] = useState("");
-
-  const [reviews, setReviews] = useState<Review[]>([
-    { id: "1", userName: "Alex", rating: 5, comment: "Love this swap.", createdAt: "2026-03-10" },
-    { id: "2", userName: "Jordan", rating: 2, comment: "Not my favorite taste.", createdAt: "2026-03-11" },
-  ]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const avgRating =
     reviews.length === 0
       ? 0
       : reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
 
-  const submitReview = () => {
-    if (!isLoggedIn) return;
-    if (myRating < 1) return;
+  // Fetch reviews from backend
+  const fetchReviews = async () => {
+    try {
+      setReviewsLoading(true);
+      const res = await fetch(`${API_BASE_URL}/api/reviews/${encodeURIComponent(bc)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setReviews(data);
+      }
+    } catch (e) {
+      console.log("Error fetching reviews:", e);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
 
-    const newReview: Review = {
-      id: String(Date.now()),
-      userName: "You",
-      rating: myRating,
-      comment: myComment.trim() || "(No comment)",
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
+  const submitReview = async () => {
+    if (!isLoggedIn || myRating < 1) return;
+    setSubmitError(null);
 
-    // TODO: POST to backend: /api/reviews/{barcode}
-    setReviews([newReview, ...reviews]);
-    setMyRating(0);
-    setMyComment("");
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+
+      const response = await fetch(`${API_BASE_URL}/api/reviews/${encodeURIComponent(bc)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${currentSession?.access_token}`
+        },
+        body: JSON.stringify({
+          rating: myRating,
+          comment: myComment.trim()
+        })
+      });
+
+      if (response.ok) {
+        setMyRating(0);
+        setMyComment("");
+        fetchReviews(); // refresh reviews list
+      } else {
+        const error = await response.text();
+        setSubmitError(error);
+      }
+    } catch (e) {
+      setSubmitError("Network error submitting review.");
+    }
   };
 
   const fetchProduct = async () => {
@@ -112,6 +145,7 @@ export default function ProductDetailScreen() {
       return;
     }
     fetchProduct();
+    fetchReviews();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bc]);
 
@@ -173,7 +207,6 @@ export default function ProductDetailScreen() {
             {/* Nutrition */}
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Nutrition (quick view)</Text>
-
               <Row
                 label="Calories (100g)"
                 value={`${fmtNumber((n as any)?.["energy-kcal_100g"], 0)} cals`}
@@ -191,7 +224,6 @@ export default function ProductDetailScreen() {
             <View style={styles.card}>
               <View style={styles.reviewHeaderRow}>
                 <Text style={styles.sectionTitle}>Reviews</Text>
-
                 <View style={{ alignItems: "flex-end" }}>
                   <Text style={styles.reviewScore}>
                     {reviews.length ? fmtNumber(avgRating, 1) : "—"}
@@ -204,7 +236,6 @@ export default function ProductDetailScreen() {
               </View>
 
               <Stars value={Math.round(avgRating)} disabled />
-
               <View style={styles.divider} />
 
               <Text style={styles.muted}>
@@ -224,6 +255,10 @@ export default function ProductDetailScreen() {
                   multiline
                 />
 
+                {submitError && (
+                  <Text style={{ color: "red", fontSize: 12, marginTop: 4 }}>{submitError}</Text>
+                )}
+
                 <Pressable
                   style={[
                     styles.btnSecondary,
@@ -238,7 +273,9 @@ export default function ProductDetailScreen() {
             </View>
 
             {/* Reviews list */}
-            {reviews.length === 0 ? (
+            {reviewsLoading ? (
+              <ActivityIndicator />
+            ) : reviews.length === 0 ? (
               <View style={styles.card}>
                 <Text style={styles.muted}>No reviews yet. Be the first!</Text>
               </View>
@@ -246,8 +283,10 @@ export default function ProductDetailScreen() {
               reviews.map((r) => (
                 <View key={r.id} style={styles.reviewCard}>
                   <View style={styles.reviewTopRow}>
-                    <Text style={styles.reviewName}>{r.userName}</Text>
-                    <Text style={styles.muted}>{r.createdAt}</Text>
+                    <Text style={styles.reviewName}>{r.displayName}</Text>
+                    <Text style={styles.muted}>
+                      {r.timeCreated ? new Date(r.timeCreated).toLocaleDateString() : ""}
+                    </Text>
                   </View>
                   <Stars value={r.rating} disabled />
                   <Text style={styles.body}>{r.comment}</Text>
@@ -283,7 +322,6 @@ function fmtNumber(v: any, decimals = 2) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0b1220" },
   container: { padding: 18, gap: 12 },
-
   card: {
     backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 18,
@@ -292,27 +330,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
   },
-
   title: { color: "white", fontSize: 18, fontWeight: "800" },
   sectionTitle: { color: "white", fontSize: 16, fontWeight: "800" },
   body: { color: "rgba(255,255,255,0.85)", lineHeight: 20 },
   muted: { color: "rgba(255,255,255,0.6)", lineHeight: 18 },
-
   image: {
     width: "100%",
     height: 180,
     borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.04)",
   },
-
   row: { flexDirection: "row", justifyContent: "space-between" },
   rowLabel: { color: "rgba(255,255,255,0.75)" },
   rowValue: { color: "white", fontWeight: "800" },
-
   centerRow: { flexDirection: "row", gap: 10, alignItems: "center", padding: 18 },
-
   divider: { height: 1, backgroundColor: "rgba(255,255,255,0.10)" },
-
   btn: {
     backgroundColor: "rgba(255,255,255,0.92)",
     borderRadius: 14,
@@ -322,7 +354,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 18,
   },
   btnText: { color: "#0b1220", fontWeight: "800" },
-
   btnSecondary: {
     borderRadius: 14,
     paddingVertical: 12,
@@ -334,7 +365,6 @@ const styles = StyleSheet.create({
   },
   btnSecondaryText: { color: "white", fontWeight: "800" },
   btnDisabled: { opacity: 0.6 },
-
   input: {
     backgroundColor: "rgba(255,255,255,0.10)",
     borderRadius: 12,
@@ -347,14 +377,12 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     marginTop: 8,
   },
-
   reviewHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   reviewScore: { color: "white", fontSize: 18, fontWeight: "800" },
-
   reviewCard: {
     backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 18,
