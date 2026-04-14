@@ -111,6 +111,38 @@ export default function ResultsScreen() {
   const [scannedName, setScannedName] = useState<string | null>(null);
   const [scannedSugar, setScannedSugar] = useState<number | null>(null);
 
+  const saveSwap = async (barcode: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+        alert("Please log in to save swaps!");
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/swaps/save`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+                originalBarcode: bc,
+                alternativeBarcode: barcode
+            })
+        });
+
+        if (response.ok) {
+            alert("Swap saved!");
+        } else {
+            const error = await response.text();
+            alert(`Could not save: ${error}`);
+        }
+    } catch (e) {
+        alert("Network error saving swap.");
+    }
+  }
+
   const fetchAll = async () => {
     try {
       setLoading(true);
@@ -267,7 +299,7 @@ export default function ResultsScreen() {
                       <Pressable
                         style={[styles.btn]}
                         onPress={() => {
-                          alert('Saved')
+                          saveSwap(p.barcode)
                         }}
                       >
                         <Text style={[styles.sugarPillText, { color: 'black', }]}>
