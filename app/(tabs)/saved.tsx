@@ -134,7 +134,7 @@ export default function Saved() {
                 <Text style={styles.helper}>
                   Sugar:{" "}
                   {s.originalProduct?.sugars100g != null
-                    ? `${s.originalProduct.sugars100g.toFixed(1)} g / 100g`
+                    ? `${s.originalProduct.sugars100g.toFixed(1)}g / 100g`
                     : "N/A"}
                 </Text>
               </Pressable>
@@ -158,7 +158,7 @@ export default function Saved() {
                 <Text style={styles.helper}>
                   Sugar:{" "}
                   {s.alternativeProduct?.sugars100g != null
-                    ? `${s.alternativeProduct.sugars100g.toFixed(1)} g / 100g`
+                    ? `${s.alternativeProduct.sugars100g.toFixed(1)}g / 100g`
                     : "N/A"}
                 </Text>
               </Pressable>
@@ -170,9 +170,9 @@ export default function Saved() {
                   Saved: {s.savedAt ? new Date(s.savedAt).toLocaleDateString() : "N/A"}
                 </Text>
                 <Text style={styles.meta}>
-                  Diff:{" "}
+                  Sugar Difference:{" "}
                   {s.sugarDifference != null
-                    ? `${s.sugarDifference.toFixed(1)} g`
+                    ? `${s.sugarDifference.toFixed(1)}g`
                     : "N/A"}
                 </Text>
               </View>
