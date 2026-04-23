@@ -102,7 +102,11 @@ function sugarBadge(sugars100g: number | null | undefined) {
 export default function ResultsScreen() {
   const router = useRouter();
   const { barcode } = useLocalSearchParams<{ barcode: string }>();
-  const bc = useMemo(() => String(barcode ?? "").trim(), [barcode]);
+  const bc = useMemo(() => {
+    const raw = String(barcode ?? "").trim();
+    // Pad to 13 digits if it looks like a UPC-A (12 digits)
+    return raw.length === 12 ? "0" + raw : raw;
+  }, [barcode]);
 
   const [loading, setLoading] = useState(true);
   const [alts, setAlts] = useState<AltProduct[]>([]);
