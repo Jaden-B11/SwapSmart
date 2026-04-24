@@ -148,27 +148,37 @@ export default function ResultsScreen() {
   }
 
   const fetchAll = async () => {
-    try {
-      setLoading(true);
-      setErr(null);
+  try {
+    setLoading(true);
+    setErr(null);
 
-      const [results, info] = await Promise.all([
-        getAlternatives(bc),
-        getScannedInfo(bc),
-      ]);
+    const info = await getScannedInfo(bc);
 
-      setAlts(results);
-      setScannedName(info.name);
-      setScannedSugar(info.sugars100g);
-    } catch (e: any) {
-      setErr(e?.message ?? "Failed to load alternatives from backend");
-      setAlts([]);
-      setScannedName(null);
-      setScannedSugar(null);
-    } finally {
-      setLoading(false);
+    let results: AltProduct[] = [];
+    let attempts = 0;
+    const maxAttempts = 7;
+
+    while (attempts < maxAttempts && results.length === 0) {
+      results = await getAlternatives(bc);
+      if (results.length === 0) {
+        await new Promise(r => setTimeout(r, 700)); // small delay
+      }
+      attempts++;
     }
-  };
+
+    setAlts(results);
+    setScannedName(info.name);
+    setScannedSugar(info.sugars100g);
+
+  } catch (e: any) {
+    setErr(e?.message ?? "Failed to load alternatives from backend");
+    setAlts([]);
+    setScannedName(null);
+    setScannedSugar(null);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     if (!bc) {
