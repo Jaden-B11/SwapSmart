@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-
 import { useRouter } from "expo-router";
 import {
   Platform,
@@ -9,7 +8,8 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
+  Image,
 } from "react-native";
 
 type QuickTile = {
@@ -33,7 +33,6 @@ export default function HomeScreen() {
   const onLookup = () => {
     const code = barcode.trim();
     if (!code) return;
-    // Later this can call your API, for now just route to results page
     router.push((`/results/${encodeURIComponent(code)}`) as any);
     setBarcode("");
   };
@@ -41,20 +40,27 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
+        
+        {/* Logo Section */}
+        <View style={styles.logoContainer}>
+          <Image
+            source={require("@/assets/images/SwapSmart-logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+
+        {/* Hero Text */}
+        <View style={styles.heroSection}>
           <Text style={styles.brand}>SwapSmart</Text>
           <Text style={styles.tagline}>
-            Scan a product and get 2–3 zero-sugar swaps in seconds.
+            A healthier alternative is a scan away.
           </Text>
-          
-          {/* Optional scan quota pill (mocked) */}
-    
         </View>
-        
-        {/* Primary action card */}
+
+        {/* Scan Card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Start a swap</Text>
+          <Text style={styles.cardTitle}>Start a Swap</Text>
 
           <Pressable
             style={styles.primaryBtn}
@@ -66,13 +72,14 @@ export default function HomeScreen() {
 
           <View style={styles.divider} />
 
-          <Text style={styles.label}>Or enter a barcode</Text>
+          <Text style={styles.label}>Or enter a barcode manually</Text>
+
           <View style={styles.row}>
             <TextInput
               value={barcode}
               onChangeText={setBarcode}
               placeholder="e.g., 012345678905"
-              placeholderTextColor="rgba(255,255,255,0.45)"
+              placeholderTextColor="#8aa2b5"
               keyboardType={Platform.OS === "ios" ? "number-pad" : "numeric"}
               style={styles.input}
               returnKeyType="search"
@@ -82,13 +89,9 @@ export default function HomeScreen() {
               <Text style={styles.secondaryBtnText}>Lookup</Text>
             </Pressable>
           </View>
-
-          <Text style={styles.helper}>
-            If a barcode isn’t found, we’ll add a search fallback.
-          </Text>
         </View>
 
-        {/* Quick tiles */}
+        {/* Quick Actions */}
         <View style={styles.grid}>
           {tiles.map((t) => (
             <Pressable
@@ -102,102 +105,163 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* Empty state section */}
+        {/* Recent Section */}
         <View style={styles.footerCard}>
-          <Text style={styles.footerTitle}>Recent scans</Text>
+          <Text style={styles.footerTitle}>Recent Scans (Coming Soon!)</Text>
           <Text style={styles.footerSub}>
             No scans yet. Try scanning your first item!
           </Text>
         </View>
-        
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0b1220" },
-  container: { padding: 18, gap: 14 },
-
-  header: { gap: 6, marginTop: 6 },
-  brand: { fontSize: 34, fontWeight: "800", color: "white" },
-  tagline: { fontSize: 14, color: "rgba(255,255,255,0.75)", lineHeight: 20 },
-  pillRow: { flexDirection: "row", marginTop: 8 },
-  pill: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+  safe: {
+    flex: 1,
+    backgroundColor: "#f4f8fb",
   },
-  pillText: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "600" },
+  container: {
+    padding: 20,
+    gap: 20,
+  },
+
+  logoContainer: {
+    alignItems: "center",
+    marginTop: 10,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+  },
+
+  heroSection: {
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  brand: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#0b1220",
+  },
+  tagline: {
+    fontSize: 14,
+    color: "#5f6c7b",
+    textAlign: "center",
+    marginTop: 4,
+  },
 
   card: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 18,
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+    gap: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  cardTitle: { color: "white", fontSize: 16, fontWeight: "700" },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0b1220",
+  },
 
   primaryBtn: {
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
+    backgroundColor: "#12AEBA",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
   },
-  primaryBtnText: { fontSize: 16, fontWeight: "800", color: "#0b1220" },
-  primaryBtnSub: { marginTop: 4, fontSize: 12, color: "rgba(11,18,32,0.65)" },
+  primaryBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  primaryBtnSub: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.9)",
+    marginTop: 4,
+  },
 
-  divider: { height: 1, backgroundColor: "rgba(255,255,255,0.10)" },
+  divider: {
+    height: 1,
+    backgroundColor: "#e3edf5",
+  },
 
-  label: { fontSize: 12, color: "rgba(255,255,255,0.75)" },
-  row: { flexDirection: "row", gap: 10, alignItems: "center" },
+  label: {
+    fontSize: 13,
+    color: "#5f6c7b",
+  },
+
+  row: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+  },
   input: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    color: "white",
+    backgroundColor: "#f9fcff",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: "#dbe7f0",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
   },
   secondaryBtn: {
+    backgroundColor: "#eaf4fb",
     paddingVertical: 12,
     paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 14,
   },
-  secondaryBtnText: { color: "white", fontWeight: "700" },
-  helper: { fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 18 },
+  secondaryBtnText: {
+    color: "#12AEBA",
+    fontWeight: "700",
+  },
 
-  grid: { flexDirection: "row", gap: 12 },
+  grid: {
+    flexDirection: "row",
+    gap: 14,
+  },
   tile: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "#ffffff",
     borderRadius: 18,
-    padding: 14,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  tileTitle: { color: "white", fontWeight: "800" },
-  tileSub: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
+  tileTitle: {
+    fontWeight: "700",
+    color: "#0b1220",
+  },
+  tileSub: {
+    fontSize: 12,
+    color: "#5f6c7b",
+    marginTop: 4,
+  },
 
   footerCard: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "#ffffff",
     borderRadius: 18,
-    padding: 14,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  footerTitle: { color: "white", fontWeight: "800" },
-  footerSub: { color: "rgba(255,255,255,0.75)", lineHeight: 20 },
+  footerTitle: {
+    fontWeight: "700",
+    color: "#0b1220",
+  },
+  footerSub: {
+    fontSize: 13,
+    color: "#5f6c7b",
+    marginTop: 4,
+  },
 });

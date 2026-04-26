@@ -2,208 +2,186 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Image
 } from "react-native";
 
-
 export default function Login() {
-    const router = useRouter();
-    const { signIn } = useAuth();
-    const [errorMsg, setErrorMsg] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+  const router = useRouter();
+  const { signIn } = useAuth();
+  const [errorMsg, setErrorMsg] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-    const handleLogin = async () => {
-        setErrorMsg("");
+  const handleLogin = async () => {
+    setErrorMsg("");
 
-        if (password.length === 0 || email.length === 0) {
-            setErrorMsg("Please enter a valid email and password.");
-            return;
-        }
-
-        try {
-            await signIn(email, password);
-            // AuthGate in _layout.tsx will automatically redirect to tabs
-        } catch (error: any) {
-            setErrorMsg(error.message || "Login failed. Please try again.");
-        }
+    if (password.length === 0 || email.length === 0) {
+      setErrorMsg("Please enter a valid email and password.");
+      return;
     }
 
-    return (
-        <View style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+    try {
+      await signIn(email, password);
+    } catch (error: any) {
+      setErrorMsg(error.message || "Login failed. Please try again.");
+    }
+  };
 
-                {/* Title */}
-                <Text style={styles.title}>Login</Text>
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.container}>
 
-                {/* Email/Password Inputs */}
-                <View style={styles.formContainer}>
+        {/* Logo */}
+        <Image
+          source={require("@/assets/images/SwapSmart-logo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
 
-                    {/* Email Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Email</Text>
-                        <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={styles.input}
-                                value={email}
-                                onChangeText={setEmail}
-                                placeholder="Enter your email"
-                                placeholderTextColor="gray"
-                                autoCapitalize="none"
-                                autoComplete="email"
-                                keyboardType="email-address"
-                            />
-                        </View>
-                    </View>
+        <View style={styles.card}>
+          <Text style={styles.title}>Welcome Back</Text>
 
-                    {/* Password Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Password</Text>
-                        <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={styles.input}
-                                value={password}
-                                onChangeText={setPassword}
-                                placeholder="Enter your password"
-                                placeholderTextColor="gray"
-                                secureTextEntry={true}
-                                autoCapitalize="none"
-                                autoComplete="password"
-                            />
-                        </View>
-                    </View>
+          {/* Email */}
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Email"
+            placeholderTextColor="#8aa2b5"
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+          />
 
-                </View>
+          {/* Password */}
+          <TextInput
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Password"
+            placeholderTextColor="#8aa2b5"
+            secureTextEntry={true}
+            autoCapitalize="none"
+            autoComplete="password"
+          />
 
-                {/* Buttons */}
-                <View style={styles.buttonGroup}>
+          {/* Error */}
+          {errorMsg ? <Text style={styles.errorMsg}>{errorMsg}</Text> : null}
 
-                    {/* Sign In */}
-                    <TouchableOpacity style={styles.signInButton} onPress={handleLogin}>
-                        <Text style={styles.signInText}>Sign in</Text>
-                    </TouchableOpacity>
+          {/* Login Button */}
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin}>
+            <Text style={styles.primaryText}>Login</Text>
+          </TouchableOpacity>
 
-                    {/* Cancel Login process -> reroute to options page */}
-                    <TouchableOpacity style={styles.cancelButton} onPress={() => router.push("/(tabs)/options")}>
-                        <Text style={styles.cancelText}>Cancel</Text>
-                    </TouchableOpacity>
+          {/* Cancel */}
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => router.push("/(tabs)/options")}
+          >
+            <Text style={styles.secondaryText}>Cancel</Text>
+          </TouchableOpacity>
 
-                </View>
-
-                {/* Error Message */}
-                <Text style={styles.errorMsg}>{errorMsg}</Text>
-
-                {/* Sign Up Rerouting */}
-                <View style={styles.signUpContainer}>
-                    <Text style={styles.signUpText}>Don&apos;t have an account? </Text>
-                    <TouchableOpacity onPress={() => router.push("/auth/sign-up")}>
-                        <Text style={styles.signUpLink}>Sign up</Text>
-                    </TouchableOpacity>
-                </View>
-
-            </ScrollView>
+          {/* Sign Up */}
+          <View style={styles.signUpContainer}>
+            <Text style={styles.signUpText}>Don’t have an account? </Text>
+            <TouchableOpacity onPress={() => router.push("/auth/sign-up")}>
+              <Text style={styles.signUpLink}>Sign up</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-    );
+
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        justifyContent: "center",
-        alignItems: "center",
-        flex: 1,
-        backgroundColor: "#f5f5f5"
-    },
-    scrollContent: {
-        flexGrow: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 24
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: "bold",
-        marginBottom: 32,
-        color: "#1a1a1a"
-    },
-    formContainer: {
-        width: "100%",
-        maxWidth: 360,
-        gap: 16
-    },
-    inputContainer: {
-        gap: 6
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: "600",
-        color: "#333"
-    },
-    inputWrapper: {
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 8,
-        backgroundColor: "#fff"
-    },
-    input: {
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 16,
-        color: "#1a1a1a"
-    },
-    buttonGroup: {
-        flexDirection: "row",
-        width: "100%",
-        maxWidth: 360,
-        gap: 12,
-        marginTop: 30
-    },
-    signInButton: {
-        flex: 1,
-        backgroundColor: "#007AFF",
-        borderRadius: 8,
-        paddingVertical: 12,
-        alignItems: "center",
-    },
-    signInText: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "600"
-    },
-    errorMsg: {
-        color: "red",
-        fontSize: 13,
-        textAlign: "center",
-        marginTop: 8
-    },
-    cancelButton: {
-        flex: 1,
-        backgroundColor: "#007AFF",
-        borderRadius: 8,
-        paddingVertical: 12,
-        alignItems: "center",
-    },
-    cancelText: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "600"
-    },
-    signUpContainer: {
-        flexDirection: "row",
-        marginTop: 24,
-        alignItems: "center"
-    },
-    signUpText: {
-        color: "#555",
-        fontSize: 14
-    },
-    signUpLink: {
-        color: "#007AFF",
-        fontSize: 14,
-        fontWeight: "600"
-    }
+  safe: {
+    flex: 1,
+    backgroundColor: "#f4f8fb",
+  },
+  container: {
+    flexGrow: 1,
+    justifyContent: "center",
+    padding: 24,
+  },
+  logo: {
+    width: 150,
+    height: 150,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  card: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 24,
+    gap: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#0b1220",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#dbe7f0",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: "#f9fcff",
+  },
+  primaryBtn: {
+    backgroundColor: "#12AEBA",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 6,
+  },
+  primaryText: {
+    color: "#ffffff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  secondaryBtn: {
+    backgroundColor: "#eaf4fb",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  secondaryText: {
+    color: "#12AEBA",
+    fontWeight: "600",
+  },
+  errorMsg: {
+    color: "#c0392b",
+    fontSize: 13,
+    textAlign: "center",
+  },
+  signUpContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  signUpText: {
+    color: "#555",
+    fontSize: 14,
+  },
+  signUpLink: {
+    color: "#12AEBA",
+    fontWeight: "600",
+  },
 });
