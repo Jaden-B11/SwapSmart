@@ -1,3 +1,5 @@
+// app/product/[barcode].tsx
+
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -11,10 +13,13 @@ import {
   Text,
   TextInput,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { getProductByBarcode, type OFFProduct } from "../../src/services/openFoodFacts";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? "http://10.0.2.2:8080";
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_BACKEND_URL ?? "http://10.0.2.2:8080";
 
 type Review = {
   id: string;
@@ -25,17 +30,7 @@ type Review = {
   timeCreated: string;
 };
 
-function Stars({
-  value,
-  onChange,
-  size = 22,
-  disabled = false,
-}: {
-  value: number;
-  onChange?: (n: number) => void;
-  size?: number;
-  disabled?: boolean;
-}) {
+function Stars({ value, onChange, size = 22, disabled = false }: any) {
   return (
     <View style={{ flexDirection: "row", gap: 6 }}>
       {[1, 2, 3, 4, 5].map((star) => (
@@ -43,9 +38,8 @@ function Stars({
           key={star}
           onPress={disabled || !onChange ? undefined : () => onChange(star)}
           disabled={disabled || !onChange}
-          hitSlop={10}
         >
-          <Text style={{ fontSize: size, color: "white" }}>
+          <Text style={{ fontSize: size, color: "#f4b400" }}>
             {star <= value ? "★" : "☆"}
           </Text>
         </Pressable>
@@ -76,17 +70,16 @@ export default function ProductDetailScreen() {
       ? 0
       : reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
 
-  // Fetch reviews from backend
   const fetchReviews = async () => {
     try {
       setReviewsLoading(true);
-      const res = await fetch(`${API_BASE_URL}/api/reviews/${encodeURIComponent(bc)}`);
+      const res = await fetch(
+        `${API_BASE_URL}/api/reviews/${encodeURIComponent(bc)}`
+      );
       if (res.ok) {
         const data = await res.json();
         setReviews(data);
       }
-    } catch (e) {
-      console.log("Error fetching reviews:", e);
     } finally {
       setReviewsLoading(false);
     }
@@ -94,34 +87,33 @@ export default function ProductDetailScreen() {
 
   const submitReview = async () => {
     if (!isLoggedIn || myRating < 1) return;
-    setSubmitError(null);
 
     try {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
 
-      const response = await fetch(`${API_BASE_URL}/api/reviews/${encodeURIComponent(bc)}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${currentSession?.access_token}`
-        },
-        body: JSON.stringify({
-          rating: myRating,
-          comment: myComment.trim()
-        })
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/reviews/${encodeURIComponent(bc)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${currentSession?.access_token}`,
+          },
+          body: JSON.stringify({
+            rating: myRating,
+            comment: myComment.trim(),
+          }),
+        }
+      );
 
       if (response.ok) {
         setMyRating(0);
         setMyComment("");
-        fetchReviews(); // refresh reviews list
-      } else {
-        const error = await response.text();
-        setSubmitError(error);
+        fetchReviews();
       }
-    } catch (e) {
-      setSubmitError("Network error submitting review.");
-    }
+    } catch {}
   };
 
   const fetchProduct = async () => {
@@ -132,21 +124,15 @@ export default function ProductDetailScreen() {
       setData(result);
     } catch (e: any) {
       setErr(e?.message ?? "Failed to load product");
-      setData(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!bc) {
-      setLoading(false);
-      setErr("Missing barcode");
-      return;
-    }
+    if (!bc) return;
     fetchProduct();
     fetchReviews();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bc]);
 
   const found = data?.status === 1;
@@ -155,156 +141,134 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={styles.safe}>
-      <Stack.Screen
-        options={{
-          title: "Product Detail",
-          headerBackTitle: "Back",
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
-      <ScrollView contentContainerStyle={styles.container}>
-        {loading ? (
-          <View style={styles.centerRow}>
-            <ActivityIndicator />
-            <Text style={styles.body}>Loading product…</Text>
-          </View>
-        ) : err ? (
-          <View style={styles.card}>
-            <Text style={styles.body}>Error: {err}</Text>
-            <Pressable style={styles.btnSecondary} onPress={fetchProduct}>
-              <Text style={styles.btnSecondaryText}>Retry</Text>
-            </Pressable>
-            <Pressable style={styles.btn} onPress={() => router.back()}>
-              <Text style={styles.btnText}>Back</Text>
-            </Pressable>
-          </View>
-        ) : !found ? (
-          <View style={styles.card}>
-            <Text style={styles.body}>Product not found.</Text>
-            <Text style={styles.muted}>Try scanning again or use manual entry.</Text>
-            <Pressable style={styles.btn} onPress={() => router.back()}>
-              <Text style={styles.btnText}>Back</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            {/* Product header */}
-            <View style={styles.card}>
-              <Text style={styles.title}>{p?.product_name || "Unnamed product"}</Text>
-              <Text style={styles.muted}>
-                {p?.brands ? `Brand: ${p.brands}` : "Brand: (unknown)"}
-              </Text>
+      <View style={styles.header}>
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backArrow}>←</Text>
+        </Pressable>
+        <Text style={styles.headerTitle}>Product Details</Text>
+      </View>
 
-              {!!p?.image_url && (
-                <Image
-                  source={{ uri: p.image_url }}
-                  style={styles.image}
-                  resizeMode="contain"
+      {/* ✅ KEYBOARD FIX HERE */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={[styles.container, { paddingBottom: 120 }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          {loading ? (
+            <ActivityIndicator size="large" color="#12AEBA" />
+          ) : !found ? (
+            <Text style={styles.error}>Product not found.</Text>
+          ) : (
+            <>
+              {/* Product Card */}
+              <View style={styles.productCard}>
+                <Text style={styles.productTitle}>
+                  {p?.product_name || "Unnamed product"}
+                </Text>
+                <Text style={styles.productBrand}>
+                  {p?.brands || "Unknown brand"}
+                </Text>
+
+                {!!p?.image_url && (
+                  <Image
+                    source={{ uri: p.image_url }}
+                    style={styles.image}
+                    resizeMode="contain"
+                  />
+                )}
+              </View>
+
+              {/* Nutrition */}
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Nutrition Facts</Text>
+                <Row
+                  label="Calories (100g)"
+                  value={`${fmtNumber(
+                    (n as any)?.["energy-kcal_100g"],
+                    0
+                  )} cals`}
                 />
-              )}
-            </View>
+                <Row
+                  label="Sugars (100g)"
+                  value={`${fmtNumber(n?.sugars_100g)} g`}
+                />
+                <Row
+                  label="Carbs (100g)"
+                  value={`${fmtNumber(n?.carbohydrates_100g)} g`}
+                />
+                <Row
+                  label="Salt (100g)"
+                  value={`${fmtNumber(n?.salt_100g)} g`}
+                />
+              </View>
 
-            {/* Nutrition */}
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Nutrition (quick view)</Text>
-              <Row
-                label="Calories (100g)"
-                value={`${fmtNumber((n as any)?.["energy-kcal_100g"], 0)} cals`}
-              />
-              <Row
-                label="Calories (per serving)"
-                value={`${fmtNumber((n as any)?.["energy-kcal_serving"], 0)} cals`}
-              />
-              <Row label="Sugars (100g)" value={`${fmtNumber(n?.sugars_100g)} g`} />
-              <Row label="Carbs (100g)" value={`${fmtNumber(n?.carbohydrates_100g)} g`} />
-              <Row label="Salt (100g)" value={`${fmtNumber(n?.salt_100g)} g`} />
-            </View>
-
-            {/* Reviews summary + composer */}
-            <View style={styles.card}>
-              <View style={styles.reviewHeaderRow}>
+              {/* Reviews */}
+              <View style={styles.card}>
                 <Text style={styles.sectionTitle}>Reviews</Text>
-                <View style={{ alignItems: "flex-end" }}>
+
+                <View style={styles.reviewSummary}>
                   <Text style={styles.reviewScore}>
-                    {reviews.length ? fmtNumber(avgRating, 1) : "—"}
-                    <Text style={styles.muted}> / 5</Text>
+                    {reviews.length ? fmtNumber(avgRating, 1) : "—"} / 5
                   </Text>
                   <Text style={styles.muted}>
-                    {reviews.length} review{reviews.length === 1 ? "" : "s"}
+                    {reviews.length} review
+                    {reviews.length === 1 ? "" : "s"}
                   </Text>
                 </View>
-              </View>
 
-              <Stars value={Math.round(avgRating)} disabled />
-              <View style={styles.divider} />
+                <Stars value={Math.round(avgRating)} disabled />
+                <View style={styles.divider} />
 
-              <Text style={styles.muted}>
-                {isLoggedIn ? "Leave a rating and review:" : "Log in to leave a review."}
-              </Text>
-
-              <View style={{ opacity: isLoggedIn ? 1 : 0.5 }}>
-                <Stars value={myRating} onChange={setMyRating} size={24} disabled={!isLoggedIn} />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Write your review (optional)"
-                  placeholderTextColor="rgba(255,255,255,0.45)"
-                  value={myComment}
-                  onChangeText={setMyComment}
-                  editable={isLoggedIn}
-                  multiline
-                />
-
-                {submitError && (
-                  <Text style={{ color: "red", fontSize: 12, marginTop: 4 }}>{submitError}</Text>
+                {isLoggedIn && (
+                  <>
+                    <Stars
+                      value={myRating}
+                      onChange={setMyRating}
+                      size={24}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Write your review..."
+                      value={myComment}
+                      onChangeText={setMyComment}
+                      multiline
+                    />
+                    <Pressable
+                      style={styles.primaryBtn}
+                      onPress={submitReview}
+                    >
+                      <Text style={styles.primaryBtnText}>
+                        Submit Review
+                      </Text>
+                    </Pressable>
+                  </>
                 )}
 
-                <Pressable
-                  style={[
-                    styles.btnSecondary,
-                    !isLoggedIn || myRating < 1 ? styles.btnDisabled : null,
-                  ]}
-                  onPress={submitReview}
-                  disabled={!isLoggedIn || myRating < 1}
-                >
-                  <Text style={styles.btnSecondaryText}>Submit Review</Text>
-                </Pressable>
+                {reviewsLoading ? (
+                  <ActivityIndicator />
+                ) : (
+                  reviews.map((r) => (
+                    <View key={r.id} style={styles.reviewCard}>
+                      <Stars value={r.rating} disabled />
+                      <Text style={styles.body}>{r.comment}</Text>
+                    </View>
+                  ))
+                )}
               </View>
-            </View>
-
-            {/* Reviews list */}
-            {reviewsLoading ? (
-              <ActivityIndicator />
-            ) : reviews.length === 0 ? (
-              <View style={styles.card}>
-                <Text style={styles.muted}>No reviews yet. Be the first!</Text>
-              </View>
-            ) : (
-              reviews.map((r) => (
-                <View key={r.id} style={styles.reviewCard}>
-                  <View style={styles.reviewTopRow}>
-                    <Text style={styles.reviewName}>{r.displayName}</Text>
-                    <Text style={styles.muted}>
-                      {r.timeCreated ? new Date(r.timeCreated).toLocaleDateString() : ""}
-                    </Text>
-                  </View>
-                  <Stars value={r.rating} disabled />
-                  <Text style={styles.body}>{r.comment}</Text>
-                </View>
-              ))
-            )}
-
-            <Pressable style={styles.btn} onPress={() => router.back()}>
-              <Text style={styles.btnText}>Back to Results</Text>
-            </Pressable>
-          </>
-        )}
-      </ScrollView>
+            </>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value }: any) {
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
@@ -320,81 +284,80 @@ function fmtNumber(v: any, decimals = 2) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0b1220" },
-  container: { padding: 18, gap: 12 },
+  safe: { flex: 1, backgroundColor: "#f4f8fb" },
+  header: {
+    paddingTop: 60,
+    paddingBottom: 30,
+    backgroundColor: "#12AEBA",
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    alignItems: "center",
+  },
+  backButton: {
+    position: "absolute",
+    top: 60,
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
+  },
+  backArrow: { fontSize: 20, fontWeight: "600", color: "#0b1220" },
+  headerTitle: { color: "#ffffff", fontSize: 22, fontWeight: "800" },
+  container: { padding: 20, gap: 20 },
+  productCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+    elevation: 3,
+  },
+  productTitle: { fontSize: 18, fontWeight: "700", color: "#0b1220" },
+  productBrand: { fontSize: 14, color: "#5f6c7b", marginTop: 4 },
+  image: { width: "100%", height: 200, marginTop: 12 },
   card: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 18,
-    padding: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+    elevation: 3,
     gap: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
   },
-  title: { color: "white", fontSize: 18, fontWeight: "800" },
-  sectionTitle: { color: "white", fontSize: 16, fontWeight: "800" },
-  body: { color: "rgba(255,255,255,0.85)", lineHeight: 20 },
-  muted: { color: "rgba(255,255,255,0.6)", lineHeight: 18 },
-  image: {
-    width: "100%",
-    height: 180,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
+  sectionTitle: { fontSize: 16, fontWeight: "800", color: "#0b1220" },
   row: { flexDirection: "row", justifyContent: "space-between" },
-  rowLabel: { color: "rgba(255,255,255,0.75)" },
-  rowValue: { color: "white", fontWeight: "800" },
-  centerRow: { flexDirection: "row", gap: 10, alignItems: "center", padding: 18 },
-  divider: { height: 1, backgroundColor: "rgba(255,255,255,0.10)" },
-  btn: {
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 6,
-    marginHorizontal: 18,
+  rowLabel: { color: "#5f6c7b" },
+  rowValue: { color: "#0b1220", fontWeight: "700" },
+  reviewSummary: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
-  btnText: { color: "#0b1220", fontWeight: "800" },
-  btnSecondary: {
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    marginTop: 6,
-  },
-  btnSecondaryText: { color: "white", fontWeight: "800" },
-  btnDisabled: { opacity: 0.6 },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    color: "white",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    minHeight: 70,
-    textAlignVertical: "top",
+  reviewScore: { fontSize: 18, fontWeight: "800", color: "#0b1220" },
+  reviewCard: {
+    backgroundColor: "#f4f8fb",
+    padding: 14,
+    borderRadius: 16,
     marginTop: 8,
   },
-  reviewHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  primaryBtn: {
+    backgroundColor: "#12AEBA",
+    paddingVertical: 12,
+    borderRadius: 14,
     alignItems: "center",
+    marginTop: 8,
   },
-  reviewScore: { color: "white", fontSize: 18, fontWeight: "800" },
-  reviewCard: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 14,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+  primaryBtnText: { color: "#ffffff", fontWeight: "700" },
+  input: {
+    backgroundColor: "#f4f8fb",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    minHeight: 80,
+    textAlignVertical: "top",
   },
-  reviewTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  reviewName: { color: "white", fontWeight: "800" },
+  muted: { color: "#5f6c7b" },
+  body: { color: "#0b1220" },
+  divider: { height: 1, backgroundColor: "#e2e8f0" },
+  error: { color: "#c0392b" },
 });

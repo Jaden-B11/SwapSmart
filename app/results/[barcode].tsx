@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 type AltProduct = {
   productId?: number | null;
@@ -31,23 +32,23 @@ async function getAlternatives(barcode: string): Promise<AltProduct[]> {
   const token = session?.access_token;
 
   const headers: Record<string, string> = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE_URL}/api/alts/${encodeURIComponent(barcode)}`, { headers });
+  const res = await fetch(
+    `${API_BASE_URL}/api/alts/${encodeURIComponent(barcode)}`,
+    { headers }
+  );
+
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`Backend error ${res.status}: ${txt}`);
   }
+
   return res.json();
 }
 
-// ---------- OpenFoodFacts (for scanned product name + sugar baseline) ----------
-async function getScannedInfo(barcode: string): Promise<{
-  name: string | null;
-  sugars100g: number | null;
-}> {
+// ---------- OpenFoodFacts ----------
+async function getScannedInfo(barcode: string) {
   try {
     const res = await fetch(
       `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(
@@ -58,12 +59,9 @@ async function getScannedInfo(barcode: string): Promise<{
     if (!res.ok) return { name: null, sugars100g: null };
 
     const json = await res.json();
-    const name = json?.product?.product_name ?? null;
-    const sugars = json?.product?.nutriments?.sugars_100g;
-
     return {
-      name,
-      sugars100g: Number.isFinite(Number(sugars)) ? Number(sugars) : null,
+      name: json?.product?.product_name ?? null,
+      sugars100g: json?.product?.nutriments?.sugars_100g ?? null,
     };
   } catch {
     return { name: null, sugars100g: null };
@@ -77,333 +75,378 @@ function fmtNumber(v: any, decimals = 2) {
 }
 
 function percentLess(base: number | null, alt: number | null) {
-  if (base == null || alt == null) return null;
-  if (base <= 0) return null;
+  if (base == null || alt == null || base <= 0) return null;
   const pct = ((base - alt) / base) * 100;
-  // only show if it's actually less
   if (!Number.isFinite(pct) || pct <= 0) return null;
   return Math.round(pct);
-}
-
-function sugarBadge(sugars100g: number | null | undefined) {
-  if (sugars100g == null || !Number.isFinite(Number(sugars100g))) {
-    return { label: "—", bg: "rgba(255,255,255,0.12)", text: "white" };
-  }
-
-  const s = Number(sugars100g);
-
-  // tweak thresholds if you want
-  if (s <= 1) return { label: "Zero Sugar!", bg: "#1f8a3b", text: "white" }; // green
-  if (s <= 5) return { label: "Very Low", bg: "#78be36", text: "white" }; // yellow
-  if (s <= 10) return { label: "Low", bg: "#afc200", text: "white" }; // orange
-  return { label: "High", bg: "#b3661e", text: "white" }; // red
 }
 
 export default function ResultsScreen() {
   const router = useRouter();
   const { barcode } = useLocalSearchParams<{ barcode: string }>();
+
   const bc = useMemo(() => {
     const raw = String(barcode ?? "").trim();
-    // Pad to 13 digits if it looks like a UPC-A (12 digits)
     return raw.length === 12 ? "0" + raw : raw;
   }, [barcode]);
 
   const [loading, setLoading] = useState(true);
   const [alts, setAlts] = useState<AltProduct[]>([]);
   const [err, setErr] = useState<string | null>(null);
-
   const [scannedName, setScannedName] = useState<string | null>(null);
   const [scannedSugar, setScannedSugar] = useState<number | null>(null);
-
-  const saveSwap = async (barcode: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-        alert("Please log in to save swaps!");
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/swaps/save`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({
-                originalBarcode: bc,
-                alternativeBarcode: barcode
-            })
-        });
-
-        if (response.ok) {
-            alert("Swap saved!");
-        } else {
-            const error = await response.text();
-            alert(`Could not save: ${error}`);
-        }
-    } catch (e) {
-        alert("Network error saving swap.");
-    }
-  }
-
+  const [savedBarcode, setSavedBarcode] = useState<string | null>(null);
+  
   const fetchAll = async () => {
     try {
       setLoading(true);
       setErr(null);
 
-      const [results, info] = await Promise.all([
-        getAlternatives(bc),
-        getScannedInfo(bc),
-      ]);
+      const info = await getScannedInfo(bc);
+
+      let results: AltProduct[] = [];
+      let attempts = 0;
+      const maxAttempts = 6;
+
+      while (attempts < maxAttempts && results.length === 0) {
+        results = await getAlternatives(bc);
+        if (results.length === 0) {
+          await new Promise((r) => setTimeout(r, 700));
+        }
+        attempts++;
+      }
 
       setAlts(results);
       setScannedName(info.name);
       setScannedSugar(info.sugars100g);
     } catch (e: any) {
-      setErr(e?.message ?? "Failed to load alternatives from backend");
+      setErr(e?.message ?? "Failed to load alternatives");
       setAlts([]);
-      setScannedName(null);
-      setScannedSugar(null);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!bc) {
-      setLoading(false);
-      setErr("Missing barcode");
-      return;
+  const saveSwap = async (barcode: string) => {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
+    alert("Please log in to save swaps!");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/swaps/save`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        originalBarcode: bc,
+        alternativeBarcode: barcode
+      })
+    });
+
+    if (response.ok) {
+      setSavedBarcode(barcode); // 👈 THIS replaces alert
+    } else {
+      const error = await response.text();
+      alert(`Could not save: ${error}`);
     }
+  } catch (e) {
+    alert("Network error saving swap.");
+  }
+};
+
+  useEffect(() => {
+    if (!bc) return;
     fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bc]);
 
   return (
     <View style={styles.safe}>
-      <Stack.Screen
-        options={{
-          title: "Results",
-          headerBackTitle: "Back",
-          headerLeft: () => (
-            <Pressable
-              onPress={() => router.replace("/(tabs)/scan")}
-              style={{ paddingHorizontal: 8, paddingVertical: 6 }}
-            >
-              <Text style={{ color: "white", fontWeight: "800" }}>Back</Text>
-            </Pressable>
-          ),
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={styles.header}>
-        <Text style={styles.title}>Results</Text>
-        <Text style={styles.sub}>Barcode: {bc || "—"}</Text>
-      </View>
+      {/* Back Button */}
+      <Pressable
+        style={styles.backButton}
+        onPress={() => router.replace("/(tabs)/scan")}
+      >
+        <Text style={styles.backArrow}>←</Text>
+      </Pressable>
 
-      <View style={styles.card}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Healthier Alternatives</Text>
+
+        {scannedName && (
+  <>
+    <View style={styles.heroCard}>
+      <Text style={styles.heroLabel}>Scanned Item</Text>
+      <Text style={styles.heroTitle}>{scannedName}</Text>
+      {scannedSugar != null && (
+        <Text style={styles.heroSub}>
+          {fmtNumber(scannedSugar)}g sugar per 100g
+        </Text>
+      )}
+    </View>
+
+    {/* Top Gradient Accent */}
+    <LinearGradient
+      colors={["#12AEBA", "#01A0D9", "#EEECE1"]}
+      locations={[0.2, 0.6, 1]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={styles.gradientBar}
+    />
+  </>
+)}
+        
+
         {loading ? (
-          <View style={styles.centerRow}>
-            <ActivityIndicator />
-            <Text style={styles.body}>Loading healthier alternatives😊…</Text>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingTitle}></Text>
+            <Text style={styles.loadingMessage}>
+              Please wait a few seconds…
+            </Text>
+            <ActivityIndicator size="large" color="#12AEBA" />
           </View>
         ) : err ? (
-          <>
-            <Text style={styles.body}>Error: {err}</Text>
-
-            <View style={styles.actionsRow}>
-              <Pressable style={styles.btnSecondary} onPress={fetchAll}>
-                <Text style={styles.btnSecondaryText}>Retry</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.btn}
-                onPress={() => router.replace("/(tabs)/scan")}
-              >
-                <Text style={styles.btnText}>Scan</Text>
-              </Pressable>
-            </View>
-          </>
+          <Text style={styles.error}>{err}</Text>
+        ) : alts.length === 0 ? (
+          <Text style={styles.empty}>
+            No alternatives found. Try scanning again.
+          </Text>
         ) : (
-          <>
-            <Text style={styles.body}>
-              Displaying the top alternatives for{" "}
-              <Text style={styles.bold}>{scannedName ?? "this product"}</Text>
-            </Text>
+          alts.slice(0, 3).map((p) => {
+            const pct = percentLess(scannedSugar, p.sugars100g);
 
-            {scannedSugar != null ? (
-              <Text style={styles.muted}>
-              Item has <Text style={styles.bold}>{fmtNumber(scannedSugar)} grams of sugar </Text>{" "}
-                per 100 grams
-              </Text>
-            ) : (
-              <Text style={styles.muted}>
-                Baseline sugars: <Text style={styles.bold}>—</Text> (not available)
-              </Text>
-            )}
-
-            <View style={styles.divider} />
-
-            {alts.length === 0 ? (
-              <Text style={styles.muted}>
-                No alternatives found for this item yet. Try a different barcode.
-              </Text>
-            ) : (
-              <ScrollView
-                style={{ maxHeight: 320 }}
-                contentContainerStyle={{ gap: 10 }}
+            return (
+              <Pressable
+                key={p.barcode}
+                style={styles.card}
+                onPress={() =>
+                  router.push(
+                    (`/product/${encodeURIComponent(p.barcode)}` as any)
+                  )
+                }
               >
-                {alts.slice(0, 3).map((p) => {
-                  const badge = sugarBadge(p.sugars100g);
-                  const pct = percentLess(scannedSugar, p.sugars100g);
+                <Text style={styles.cardTitle}>
+                  {p.productName ?? "Unnamed product"}
+                </Text>
 
-                  return (
-                    <View 
-                      key={p.barcode}
-                      style={[styles.altCard, {flexDirection: 'row', overflow: "hidden"}]}
-                      >                      
-                      <Pressable
-                        key={p.barcode}   
-                        style={{ flex: 3 }}                     
-                        onPress={() =>
-                          router.push(
-                            (`/product/${encodeURIComponent(p.barcode)}` as any)
-                          )
-                        }
-                      >
-                        <Text style={styles.altTitle}>
-                          {p.productName ?? "Unnamed product"}
-                        </Text>
+                <Text style={styles.cardSub}>
+                  {p.sugars100g != null
+                  ? `${fmtNumber(p.sugars100g)}g sugar per 100g`
+                  : "Sugar data unavailable"}
+                </Text>
 
-                        <Text style={styles.altSub}>
-                          Sugars (100g):{" "}
-                          <Text style={styles.bold}>
-                            {p.sugars100g != null ? `${fmtNumber(p.sugars100g)} g` : "—"}
-                          </Text>
-                        </Text>
+                {p.sugars100g === 0 && (
+                <View style={[styles.sugarBadge, styles.noSugarBadge]}>
+                  <Text style={styles.sugarBadgeText}>No Sugar!</Text>
+                </View>
+                )}
 
-                        <View style={[styles.sugarPill, { backgroundColor: badge.bg }]}>
-                          <Text style={[styles.sugarPillText, { color: badge.text }]}>
-                            {badge.label}
-                          </Text>
-                        </View>
+                {p.sugars100g != null && p.sugars100g > 0 && p.sugars100g < 5 && (
+                <View style={[styles.sugarBadge, styles.lowSugarBadge]}>
+                  <Text style={styles.sugarBadgeText}>Low Sugar</Text>
+                </View>
+                )}
 
-                        {pct != null ? (
-                          <Text style={styles.altSub}>
-                            ~{pct}% less sugar per 100g vs scanned item
-                          </Text>
-                        ) : null}
+                {pct != null && (
+                  <Text style={styles.pct}>
+                    {pct}% less sugar than scanned item
+                  </Text>
+                )}
 
-                        {p.category ? (
-                          <Text style={styles.altSub}>Category: {p.category}</Text>
-                        ) : null}
-                      </Pressable>
-                      
-                      <Pressable
-                        style={[styles.btn]}
-                        onPress={() => {
-                          saveSwap(p.barcode)
-                        }}
-                      >
-                        <Text style={[styles.sugarPillText, { color: 'black', }]}>
-                          Save Swap
-                        </Text>
-                      </Pressable>
-                      
-                    </View>
-                  );
-                })}
-              </ScrollView>
-            )}
+                <Pressable
+                  style={styles.saveBtn}
+                  onPress={() => saveSwap(p.barcode)}
+                >
+                <Text style={styles.saveText}>Save Swap</Text>
+                </Pressable>
 
-            <Pressable
-              style={[styles.btnSecondary, styles.btnFull]}
-              onPress={() =>
-                router.push((`/product/${encodeURIComponent(bc)}` as any))
-              }
-            >
-              <Text style={styles.btnSecondaryText}>View Scanned Product Detail</Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.btn, styles.btnFull]}
-              onPress={() => router.replace("/(tabs)/scan")}
-            >
-              <Text style={styles.btnText}>Scan Another</Text>
-            </Pressable>
-          </>
+                {savedBarcode === p.barcode && (
+                  <Text style={{ marginTop: 6, color: "#1f8a3b", fontWeight: "600" }}>
+                    Successfully saved this swap ✓
+                  </Text>
+                )}
+              </Pressable>
+            );
+          })
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0b1220", padding: 18, gap: 12 },
-  header: { gap: 4, marginTop: 6 },
-  title: { color: "white", fontSize: 26, fontWeight: "800" },
-  sub: { color: "rgba(255,255,255,0.7)" },
+  safe: {
+    flex: 1,
+    backgroundColor: "#f4f8fb",
+  },
+
+  backButton: {
+    position: "absolute",
+    top: 55,
+    left: 20,
+    zIndex: 10,
+    backgroundColor: "#ffffff",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+
+  backArrow: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#0b1220",
+  },
+
+  container: {
+    padding: 20,
+    gap: 20,
+    paddingTop: 90,
+  },
+
+  title: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#0b1220",
+    textAlign: "center",
+  },
+
+  heroCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  heroLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#12AEBA",
+  },
+
+  heroTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#5c89ad",
+    marginTop: 4,
+  },
+
+  heroSub: {
+    fontSize: 14,
+    color: "#5f6c7b",
+    marginTop: 4,
+  },
 
   card: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 18,
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-  },
-
-  body: { color: "rgba(255,255,255,0.85)", lineHeight: 20 },
-  muted: { color: "rgba(255,255,255,0.6)", lineHeight: 18 },
-  bold: { fontWeight: "800", color: "white" },
-  divider: { height: 1, backgroundColor: "rgba(255,255,255,0.10)" },
-
-  centerRow: { flexDirection: "row", gap: 10, alignItems: "center" },
-  actionsRow: { flexDirection: "row", gap: 10, marginTop: 6 },
-
-  btn: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  btnText: { color: "#0b1220", fontWeight: "800" },
-
-  btnSecondary: {
-    flex: 1,
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
-  btnSecondaryText: { color: "white", fontWeight: "800" },
-
-  btnFull: { width: "100%", flex: 0 },
-
-  altCard: {
-    borderRadius: 14,
-    padding: 12,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 18,
     gap: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  altTitle: { color: "white", fontWeight: "800", fontSize: 14 },
-  altSub: { color: "rgba(255,255,255,0.7)", fontSize: 12, lineHeight: 16 },
 
-  sugarPill: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    marginTop: 2,
+  cardTitle: {
+    fontWeight: "700",
+    fontSize: 16,
+    color: "#0b1220",
   },
-  sugarPillText: {
-    fontSize: 12,
-    fontWeight: "800",
+
+  cardSub: {
+    fontSize: 13,
+    color: "#5f6c7b",
   },
+
+  pct: {
+    marginTop: 4,
+    fontWeight: "600",
+    color: "#12AEBA",
+  },
+
+  saveBtn: {
+    marginTop: 10,
+    backgroundColor: "#12AEBA",
+    paddingVertical: 10,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+
+  saveText: {
+    color: "#ffffff",
+    fontWeight: "700",
+  },
+
+  empty: {
+    color: "#5f6c7b",
+  },
+
+  error: {
+    color: "#c0392b",
+  },
+
+  sugarBadge: {
+  alignSelf: "flex-start",
+  marginTop: 6,
+  paddingVertical: 4,
+  paddingHorizontal: 12,
+  borderRadius: 999,
+},
+
+sugarBadgeText: {
+  fontSize: 12,
+  fontWeight: "700",
+  color: "#ffffff",
+},
+
+noSugarBadge: {
+  backgroundColor: "#1f8a3b", // green
+},
+
+lowSugarBadge: {
+  backgroundColor: "#a1e308", // yellow
+},
+loadingContainer: {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  paddingTop: 1,
+},
+
+loadingTitle: {
+  fontSize: 26,
+  fontWeight: "800",
+  color: "#0b1220",
+},
+
+loadingMessage: {
+  fontSize: 14,
+  color: "#5f6c7b",
+  marginBottom: 20,
+},
+gradientBar: {
+  height: 6,
+  borderRadius: 999,
+  marginTop: 8,
+  marginHorizontal: 4,
+  shadowColor: "#000",
+  shadowOpacity: 0.15,
+  shadowRadius: 4,
+  elevation: 4,
+},
 });

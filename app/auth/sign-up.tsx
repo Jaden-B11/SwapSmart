@@ -1,420 +1,285 @@
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-import { Checkbox } from 'expo-checkbox';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { Checkbox } from "expo-checkbox";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Image,
 } from "react-native";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function SignUp() {
-    const router = useRouter();
-    const { signUp } = useAuth();
-    const [errorMsg, setErrorMsg] = useState("");
-    const [firstName, setFirstName] = useState("");
-    const [lastName, setLastName] = useState("");
-    const [email, setEmail] = useState("");
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [glutenChecked, setGlutenChecked] = useState(false);
-    const [eggsChecked, setEggsChecked] = useState(false);
-    const [nutsChecked, setNutsChecked] = useState(false);
-    const [soybeansChecked, setSoybeansChecked] = useState(false);
-    const [milkChecked, setMilkChecked] = useState(false);
-    const [fishChecked, setFishChecked] = useState(false);
-    const [peanutsChecked, setPeanutsChecked] = useState(false);
-    const [sesameChecked, setSesameChecked] = useState(false);
+  const router = useRouter();
+  const { signUp } = useAuth();
 
-    const handleSignUp = async () => {
-        setErrorMsg("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [glutenChecked, setGlutenChecked] = useState(false);
+  const [eggsChecked, setEggsChecked] = useState(false);
+  const [nutsChecked, setNutsChecked] = useState(false);
+  const [soybeansChecked, setSoybeansChecked] = useState(false);
+  const [milkChecked, setMilkChecked] = useState(false);
+  const [fishChecked, setFishChecked] = useState(false);
+  const [peanutsChecked, setPeanutsChecked] = useState(false);
+  const [sesameChecked, setSesameChecked] = useState(false);
 
-        // Validate all fields filled out
-        if (firstName.length === 0 || lastName.length === 0 || email.length === 0 ||
-            username.length === 0 || password.length === 0 || confirmPassword.length === 0) {
-            setErrorMsg("Please enter all fields");
-            return;
-        }
+  const handleSignUp = async () => {
+    setErrorMsg("");
 
-        // Validate passwords match
-        if (password !== confirmPassword) {
-            setErrorMsg("Passwords don't match");
-            return;
-        }
-
-        try {
-            // Sign up with Supabase Auth
-            await signUp(email, password);
-
-            // Get the session token to call our backend
-            const { data: { session } } = await supabase.auth.getSession();
-
-            if (!session) {
-                setErrorMsg("Sign up succeeded but could not get session. Please log in.");
-                router.push("/auth/login");
-                return;
-            }
-
-            const token = session.access_token;
-
-            try {
-                const profileResponse = await fetch(`${BACKEND_URL}/api/users/profile`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${session.access_token}`
-                    },
-                    body: JSON.stringify({
-                        firstName,
-                        lastName,
-                        username
-                    })
-                });
-               
-            } catch (fetchError: any) {
-                console.log("Fetch error:", fetchError.message);
-            }
-
-            // if account created with Supabase Auth, but profile creation in backend went wrong
-            // if (!profileResponse.ok) {
-            //     setErrorMsg("Account created but profile setup failed. Please contact support.");
-            //     return;
-            // }
-
-            // Save selected allergens to backend
-            const selectedAllergens = [
-                glutenChecked && "en:gluten",
-                milkChecked && "en:milk",
-                eggsChecked && "en:eggs",
-                fishChecked && "en:fish",
-                nutsChecked && "en:nuts",
-                peanutsChecked && "en:peanuts",
-                soybeansChecked && "en:soybeans",
-                sesameChecked && "en:sesame-seeds"
-            ].filter(Boolean);
-
-            try {
-                if (selectedAllergens.length > 0) {
-                    await fetch(`${BACKEND_URL}/api/users/allergens`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${token}`
-                        },
-                        body: JSON.stringify(selectedAllergens)
-                    });
-                }
-    
-            } catch(error) {
-                console.log("Error with creating user allergens: " + error);
-            }
-            
-            // AuthGate will redirect to tabs automatically
-
-        } catch (error: any) {
-            setErrorMsg(error.message || "Sign up failed. Please try again.");
-        }
+    if (
+      firstName.length === 0 ||
+      lastName.length === 0 ||
+      email.length === 0 ||
+      username.length === 0 ||
+      password.length === 0 ||
+      confirmPassword.length === 0
+    ) {
+      setErrorMsg("Please enter all fields");
+      return;
     }
 
-    return (
-        <View style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+    if (password !== confirmPassword) {
+      setErrorMsg("Passwords don't match");
+      return;
+    }
 
-                {/* Title */}
-                <Text style={styles.title}>Sign Up</Text>
+    try {
+      await signUp(email, password);
 
-                {/* Inputs */}
-                <View style={styles.formContainer}>
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setErrorMsg("Sign up succeeded but could not get session.");
+        return;
+      }
 
-                    {/* First Name Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>First Name</Text>
-                        <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Enter your first name"
-                                placeholderTextColor="gray"
-                                autoCapitalize="none"
-                                onChangeText={setFirstName}
-                            />
-                        </View>
-                    </View>
+      const token = session.access_token;
 
-                    {/* Last Name Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Last Name</Text>
-                        <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Enter your last name"
-                                placeholderTextColor="gray"
-                                autoCapitalize="none"
-                                onChangeText={setLastName}
-                            />
-                        </View>
-                    </View>
+      await fetch(`${BACKEND_URL}/api/users/profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ firstName, lastName, username }),
+      });
 
-                    {/* Email Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Email</Text>
-                        <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Enter your email"
-                                placeholderTextColor="gray"
-                                autoCapitalize="none"
-                                autoComplete="email"
-                                keyboardType="email-address"
-                                onChangeText={setEmail}
-                            />
-                        </View>
-                    </View>
+      const selectedAllergens = [
+        glutenChecked && "en:gluten",
+        milkChecked && "en:milk",
+        eggsChecked && "en:eggs",
+        fishChecked && "en:fish",
+        nutsChecked && "en:nuts",
+        peanutsChecked && "en:peanuts",
+        soybeansChecked && "en:soybeans",
+        sesameChecked && "en:sesame-seeds",
+      ].filter(Boolean);
 
-                    {/* Username Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Username</Text>
-                        <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Create a username"
-                                placeholderTextColor="gray"
-                                autoCapitalize="none"
-                                autoComplete="username"
-                                onChangeText={setUsername}
-                            />
-                        </View>
-                    </View>
+      if (selectedAllergens.length > 0) {
+        await fetch(`${BACKEND_URL}/api/users/allergens`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(selectedAllergens),
+        });
+      }
+    } catch (error: any) {
+      setErrorMsg(error.message || "Sign up failed.");
+    }
+  };
 
-                    {/* Password Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Password</Text>
-                        <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Create a password"
-                                placeholderTextColor="gray"
-                                secureTextEntry={true}
-                                autoCapitalize="none"
-                                autoComplete="password-new"
-                                onChangeText={setPassword}
-                            />
-                        </View>
-                    </View>
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.container}>
+        
+        <Image
+          source={require("@/assets/images/SwapSmart-logo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
 
-                    {/* Confirm Password Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Confirm Password</Text>
-                        <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Confirm your password"
-                                placeholderTextColor="gray"
-                                secureTextEntry={true}
-                                autoCapitalize="none"
-                                autoComplete="password-new"
-                                onChangeText={setConfirmPassword}
-                            />
-                        </View>
-                    </View>
+        <View style={styles.card}>
+          <Text style={styles.title}>Create Account</Text>
 
-                    {/* Allergens Input */}
-                    <Text style={styles.label}>Allergens:</Text>
-                    <View style={styles.allergenContainer}>
+            <TextInput
+                style={styles.input}
+                placeholder="First Name"
+                placeholderTextColor="#8aa0b3"
+                onChangeText={setFirstName}
+            />
+          <TextInput
+            style={styles.input}
+            placeholder="Last Name"
+            placeholderTextColor="#8aa0b3"
+            onChangeText={setLastName}
+            />
 
-                        <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={glutenChecked} onValueChange={setGlutenChecked} />
-                            <Text>Gluten</Text>
-                        </View>
+            <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#8aa0b3"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            onChangeText={setEmail}
+            />
 
-                        <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={milkChecked} onValueChange={setMilkChecked} />
-                            <Text>Milk</Text>
-                        </View>
+            <TextInput
+            style={styles.input}
+            placeholder="Username"
+            placeholderTextColor="#8aa0b3"
+            autoCapitalize="none"
+            onChangeText={setUsername}
+            />
 
-                        <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={eggsChecked} onValueChange={setEggsChecked} />
-                            <Text>Eggs</Text>
-                        </View>
+            <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#8aa0b3"
+            secureTextEntry
+            onChangeText={setPassword}
+            />
 
-                        <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={fishChecked} onValueChange={setFishChecked} />
-                            <Text>Fish</Text>
-                        </View>
+            <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
+            placeholderTextColor="#8aa0b3"
+            secureTextEntry
+            onChangeText={setConfirmPassword}
+            />
+          <Text style={styles.sectionTitle}>Allergens</Text>
 
-                        <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={nutsChecked} onValueChange={setNutsChecked} />
-                            <Text>Nuts</Text>
-                        </View>
+          <View style={styles.allergenContainer}>
+            {[
+              ["Gluten", glutenChecked, setGlutenChecked],
+              ["Milk", milkChecked, setMilkChecked],
+              ["Eggs", eggsChecked, setEggsChecked],
+              ["Fish", fishChecked, setFishChecked],
+              ["Nuts", nutsChecked, setNutsChecked],
+              ["Peanuts", peanutsChecked, setPeanutsChecked],
+              ["Soybeans", soybeansChecked, setSoybeansChecked],
+              ["Sesame", sesameChecked, setSesameChecked],
+            ].map(([label, value, setter]: any) => (
+              <View key={label} style={styles.allergenItem}>
+                <Checkbox value={value} onValueChange={setter} color="#12AEBA" />
+                <Text style={styles.allergenText}>{label}</Text>
+              </View>
+            ))}
+          </View>
 
-                        <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={peanutsChecked} onValueChange={setPeanutsChecked} />
-                            <Text>Peanuts</Text>
-                        </View>
+          {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
 
-                        <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={soybeansChecked} onValueChange={setSoybeansChecked} />
-                            <Text>Soybeans</Text>
-                        </View>
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleSignUp}>
+            <Text style={styles.primaryText}>Sign Up</Text>
+          </TouchableOpacity>
 
-                        <View style={styles.allergenItems}>
-                            <Checkbox style={styles.checkbox} value={sesameChecked} onValueChange={setSesameChecked} />
-                            <Text>Sesame Seeds</Text>
-                        </View>
-
-                    </View>
-
-                    {/* Buttons */}
-                    <View style={styles.buttonGroup}>
-
-                        {/* Sign Up */}
-                        <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
-                            <Text style={styles.signUpText}>Sign up</Text>
-                        </TouchableOpacity>
-
-                        {/* Cancel Sign Up process -> reroute to options page */}
-                        <TouchableOpacity style={styles.cancelButton} onPress={() => router.push("/(tabs)/options")}>
-                            <Text style={styles.cancelText}>Cancel</Text>
-                        </TouchableOpacity>
-
-                    </View>
-
-                    {/* Error Message */}
-                    <Text style={styles.errorMsg}>{errorMsg}</Text>
-
-                </View>
-
-                {/* Login Rerouting */}
-                <View style={styles.loginContainer}>
-                    <Text style={styles.loginText}>Already have an account? </Text>
-                    <TouchableOpacity>
-                        <Text style={styles.loginLink} onPress={() => router.push("/auth/login")}>Click here</Text>
-                    </TouchableOpacity>
-                </View>
-
-            </ScrollView>
+          <TouchableOpacity onPress={() => router.push("/auth/login")}>
+            <Text style={styles.link}>Already have an account? Login</Text>
+          </TouchableOpacity>
         </View>
-    );
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        justifyContent: "center",
-        alignItems: "center",
-        flex: 1,
-        backgroundColor: "#f5f5f5"
-    },
-    scrollContent: {
-        flexGrow: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 24
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: "bold",
-        marginBottom: 32,
-        color: "#1a1a1a"
-    },
-    formContainer: {
-        width: "100%",
-        maxWidth: 360,
-        gap: 16
-    },
-    inputContainer: {
-        gap: 6
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: "600",
-        color: "#333"
-    },
-    inputWrapper: {
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 8,
-        backgroundColor: "#fff"
-    },
-    input: {
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 16,
-        color: "#1a1a1a"
-    },
-    signUpButton: {
-        flex: 1,
-        backgroundColor: "#007AFF",
-        borderRadius: 8,
-        paddingVertical: 12,
-        alignItems: "center",
-        marginTop: 8
-    },
-    signUpText: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "600"
-    },
-    buttonGroup: {
-        flexDirection: "row",
-        width: "100%",
-        maxWidth: 360,
-        gap: 12,
-        marginTop: 10
-    },
-    cancelButton: {
-        flex: 1,
-        backgroundColor: "#007AFF",
-        borderRadius: 8,
-        paddingVertical: 12,
-        alignItems: "center",
-        marginTop: 8
-    },
-    cancelText: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "600"
-    },
-    errorMsg: {
-        color: "red",
-        fontSize: 13,
-        textAlign: "center"
-    },
-    loginContainer: {
-        flexDirection: "row",
-        marginTop: 24,
-        alignItems: "center"
-    },
-    loginText: {
-        color: "#555",
-        fontSize: 14
-    },
-    loginLink: {
-        color: "#007AFF",
-        fontSize: 14,
-        fontWeight: "600"
-    },
-    checkbox: {
-        margin: 5
-    },
-    allergenContainer: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-    },
-    allergenItems: {
-        flexDirection: "row",
-        alignItems: "center",
-        width: "50%",
-        marginBottom: 8
-    }
+  safe: {
+    flex: 1,
+    backgroundColor: "#f4f8fb",
+  },
+  container: {
+    padding: 24,
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  logo: {
+    width: 140,
+    height: 140,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  card: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 24,
+    gap: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
+    color: "#0b1220",
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#4f5050",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: "#f9fcff",
+  },
+  sectionTitle: {
+    fontWeight: "700",
+    fontSize: 16,
+    marginTop: 10,
+    color: "#0b1220",
+  },
+  allergenContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  allergenItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "50%",
+    gap: 6,
+  },
+  allergenText: {
+    fontSize: 14,
+    color: "#0b1220",
+  },
+  primaryBtn: {
+    backgroundColor: "#12AEBA",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  primaryText: {
+    color: "#ffffff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  link: {
+    textAlign: "center",
+    marginTop: 10,
+    color: "#12AEBA",
+    fontWeight: "600",
+  },
+  error: {
+    color: "#c0392b",
+    fontSize: 13,
+    textAlign: "center",
+  },
+  
 });
-// ```
-
-// Also add `EXPO_PUBLIC_BACKEND_URL` to your `.env`:
-// ```
-// EXPO_PUBLIC_BACKEND_URL=http://localhost:8080
